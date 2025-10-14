@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+    <h2 class="text-xl font-semibold mb-4">Console: {{ vps.vps_id }}</h2>
+    <div id="terminal" class="bg-black text-white p-4 rounded h-96 overflow-auto font-mono"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const socket = io('/console');
+        const terminal = document.getElementById('terminal');
+        
+        socket.on('connect', () => {
+            socket.emit('start_shell', { vps_id: '{{ vps.vps_id }}' });
+        });
+
+        socket.on('output', (data) => {
+            terminal.innerText += data;
+            terminal.scrollTop = terminal.scrollHeight;
+        });
+
+        socket.on('error', (msg) => {
+            terminal.innerText += `\nError: ${msg}\n`;
+        });
+
+        socket.on('shell_exit', () => {
+            terminal.innerText += '\nShell closed.\n';
+        });
+
+        terminal.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                socket.emit('input', '\n');
+                e.preventDefault();
+            } else if (e.key.length === 1) {
+                socket.emit('input', e.key);
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            socket.emit('resize', {
+                cols: Math.floor(terminal.clientWidth / 8),
+                rows: Math.floor(terminal.clientHeight / 16)
+            });
+        });
+    </script>
+</div>
+{% endblock %}

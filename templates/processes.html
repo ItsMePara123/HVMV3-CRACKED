@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Processes - {{ vps.vps_id }} - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">Process Manager</h1>
+                <p class="text-gray-600">VPS: {{ vps.vps_id }} - Monitor and manage running processes</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="status-{{ vps.status }} px-3 py-1 rounded-full text-sm font-medium">
+                    <i class="fas fa-circle mr-1"></i>
+                    {{ vps.status|title }}
+                </span>
+                <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+                   class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center">
+                    <i class="fas fa-arrow-left mr-1"></i>Back to VPS
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Process Controls -->
+    <div class="card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h3 class="text-lg font-semibold flex items-center">
+                <i class="fas fa-tasks mr-2 text-blue-500"></i>
+                Running Processes
+            </h3>
+            <div class="flex space-x-3">
+                <button onclick="refreshProcesses()" 
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center">
+                    <i class="fas fa-sync-alt mr-1"></i>Refresh
+                </button>
+                {% if is_admin %}
+                <button onclick="showKillProcessModal()" 
+                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center">
+                    <i class="fas fa-skull-crossbones mr-1"></i>Kill Process
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Process Table -->
+    <div class="card p-6">
+        <div class="overflow-x-auto">
+            <table class="w-full table-auto">
+                <thead>
+                    <tr class="bg-gray-50 border-b">
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">USER</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">PID</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">%CPU</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">%MEM</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">VSZ</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">RSS</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">TTY</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">STAT</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">START</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">TIME</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">COMMAND</th>
+                        {% if is_admin %}
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">ACTIONS</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for process in processes %}
+                    {% if not loop.first %}  <!-- Skip header row -->
+                    <tr class="hover:bg-gray-50 transition">
+                        {% set parts = process.split() %}
+                        {% if parts|length >= 11 %}
+                        <td class="px-4 py-3 text-sm">{{ parts[0] }}</td>
+                        <td class="px-4 py-3 text-sm font-mono">{{ parts[1] }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs 
+                                {% if parts[2]|float > 50 %}bg-red-100 text-red-800
+                                {% elif parts[2]|float > 20 %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ parts[2] }}%
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs 
+                                {% if parts[3]|float > 50 %}bg-red-100 text-red-800
+                                {% elif parts[3]|float > 20 %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ parts[3] }}%
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm font-mono">{{ parts[4] }}</td>
+                        <td class="px-4 py-3 text-sm font-mono">{{ parts[5] }}</td>
+                        <td class="px-4 py-3 text-sm font-mono">{{ parts[6] }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded text-xs 
+                                {% if parts[7] == 'R' %}bg-green-100 text-green-800
+                                {% elif parts[7] == 'S' %}bg-blue-100 text-blue-800
+                                {% elif parts[7] == 'D' %}bg-red-100 text-red-800
+                                {% elif parts[7] == 'Z' %}bg-purple-100 text-purple-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ parts[7] }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">{{ parts[8] }}</td>
+                        <td class="px-4 py-3 text-sm">{{ parts[9] }}</td>
+                        <td class="px-4 py-3 text-sm font-mono text-xs truncate max-w-xs" title="{{ parts[10:]|join(' ') }}">
+                            {{ parts[10:]|join(' ') | truncate(50) }}
+                        </td>
+                        {% if is_admin %}
+                        <td class="px-4 py-3 text-sm">
+                            <button onclick="killProcess('{{ vps.vps_id }}', '{{ parts[1] }}')" 
+                                    class="text-red-500 hover:text-red-700 transition" 
+                                    title="Kill Process">
+                                <i class="fas fa-skull-crossbones"></i>
+                            </button>
+                        </td>
+                        {% endif %}
+                        {% endif %}
+                    </tr>
+                    {% endif %}
+                    {% else %}
+                    <tr>
+                        <td colspan="{% if is_admin %}12{% else %}11{% endif %}" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                            <p>No process data available or VPS is not running</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Process Statistics -->
+        {% if processes and processes|length > 1 %}
+        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h4 class="font-semibold mb-3">Process Statistics</h4>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ processes|length - 1 }}</div>
+                    <div class="text-gray-600">Total Processes</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">
+                        {{ processes|selectattr('split.7', 'equalto', 'R')|list|length }}
+                    </div>
+                    <div class="text-gray-600">Running</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-yellow-600">
+                        {{ processes|selectattr('split.7', 'equalto', 'S')|list|length }}
+                    </div>
+                    <div class="text-gray-600">Sleeping</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-600">
+                        {{ processes|selectattr('split.7', 'equalto', 'Z')|list|length }}
+                    </div>
+                    <div class="text-gray-600">Zombies</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Kill Process Modal -->
+<div id="killProcessModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Kill Process</h3>
+        <form id="killProcessForm" onsubmit="killCustomProcess(event, '{{ vps.vps_id }}')">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Process ID (PID)</label>
+                    <input type="number" name="pid" class="w-full border rounded p-2" min="1" required 
+                           placeholder="Enter PID to kill">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Signal</label>
+                    <select name="signal" class="w-full border rounded p-2">
+                        <option value="15">TERM (15) - Graceful termination</option>
+                        <option value="9">KILL (9) - Forceful termination</option>
+                        <option value="2">INT (2) - Interrupt</option>
+                        <option value="1">HUP (1) - Hangup</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="hideKillProcessModal()" 
+                        class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+                    Kill Process
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Modal functions
+function showKillProcessModal() {
+    document.getElementById('killProcessModal').classList.remove('hidden');
+}
+
+function hideKillProcessModal() {
+    document.getElementById('killProcessModal').classList.add('hidden');
+}
+
+// Process management functions
+async function killProcess(vpsId, pid) {
+    if (!confirm(`Are you sure you want to kill process ${pid}?`)) return;
+    
+    try {
+        const formData = new FormData();
+        formData.append('pid', pid);
+        
+        const response = await fetch(`/vps/${vpsId}/processes`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(`Process ${pid} killed successfully`);
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to kill process'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function killCustomProcess(event, vpsId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const pid = formData.get('pid');
+    
+    if (!confirm(`Are you sure you want to kill process ${pid}?`)) return;
+    
+    try {
+        const response = await fetch(`/vps/${vpsId}/processes`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(`Process ${pid} killed successfully`);
+            hideKillProcessModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to kill process'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function refreshProcesses() {
+    location.reload();
+}
+
+// Auto-refresh every 30 seconds
+setTimeout(() => {
+    if (document.visibilityState === 'visible') {
+        refreshProcesses();
+    }
+}, 30000);
+</script>
+
+<style>
+.modal {
+    transition: opacity 0.3s ease;
+}
+.status-running {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.status-stopped {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+.card {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ vps.vps_id }} - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-bold">Edit VPS: {{ vps.vps_id }}</h1>
+            <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+               class="text-blue-500 hover:text-blue-700 flex items-center space-x-2">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to VPS</span>
+            </a>
+        </div>
+
+        {% if error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Basic Configuration -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold">Basic Configuration</h3>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Memory (GB)</label>
+                        <input type="number" name="memory" value="{{ vps.memory }}" min="1" max="512" required 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">CPU Cores</label>
+                        <input type="number" name="cpu" value="{{ vps.cpu }}" min="1" max="32" required 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Disk Space (GB)</label>
+                        <input type="number" name="disk" value="{{ vps.disk }}" min="10" max="1000" required 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                </div>
+
+                <!-- Advanced Settings -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold">Advanced Settings</h3>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">OS Image</label>
+                        <select name="os_image" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            {% for image in os_images %}
+                            <option value="{{ image }}" {% if image == vps.os_image %}selected{% endif %}>
+                                {{ image }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Assign to User</label>
+                        <select name="user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {% if user.id == vps.created_by %}selected{% endif %}>
+                                {{ user.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Bandwidth Limit (GB)</label>
+                        <input type="number" name="bandwidth_limit" value="{{ vps.bandwidth_limit }}" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Network Configuration -->
+            <div class="border-t pt-6">
+                <h3 class="text-lg font-semibold mb-4">Network Configuration</h3>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Additional Ports</label>
+                    <input type="text" name="additional_ports" value="{{ vps.additional_ports }}" 
+                           placeholder="8080:80,8443:443" 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <p class="mt-1 text-sm text-gray-500">Format: host_port:container_port,host_port:container_port</p>
+                </div>
+            </div>
+
+            <!-- Tags -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Tags</label>
+                <input type="text" name="tags" value="{{ vps.tags }}" placeholder="web,db,prod" 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <p class="mt-1 text-sm text-gray-500">Comma-separated tags for organization</p>
+            </div>
+
+            <!-- Current Status -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="font-semibold mb-2">Current Status</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-600">Status:</span>
+                        <span class="status-{{ vps.status }} ml-2">{{ vps.status|title }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Container ID:</span>
+                        <code class="ml-2">{{ vps.container_id[:12] }}...</code>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Created:</span>
+                        <span class="ml-2">{{ vps.created_at[:10] }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Expires:</span>
+                        <span class="ml-2">{{ vps.expires_at[:10] }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warning Notice -->
+            <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
+                    <div>
+                        <h3 class="font-semibold text-yellow-800">Important Notice</h3>
+                        <p class="text-yellow-700 text-sm mt-1">
+                            Changing memory, CPU, disk, or OS image will recreate the VPS container. 
+                            This may cause temporary downtime and will reset the container state (but preserve data volumes).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-4">
+                <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+                   class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="btn-primary px-6 py-2 rounded-lg flex items-center space-x-2">
+                    <i class="fas fa-save"></i>
+                    <span>Update VPS</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

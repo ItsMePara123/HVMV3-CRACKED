@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}VPS Created - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="card p-8 text-center">
+        <div class="mb-6">
+            <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
+            <h1 class="text-3xl font-bold text-gray-900">VPS Created Successfully!</h1>
+            <p class="text-gray-600 mt-2">Your new VPS instance is ready to use</p>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-6 mb-6 text-left">
+            <h2 class="text-xl font-semibold mb-4">Connection Details</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="font-medium">VPS ID:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded">{{ vps.vps_id }}</code>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">SSH Host:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded">{{ server_ip }}</code>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">SSH Port:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded">{{ vps.port }}</code>
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="font-medium">Username:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded">{{ vps.username }}</code>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">Password:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded font-mono" id="passwordField">{{ vps.password }}</code>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">Status:</span>
+                        <span class="status-{{ vps.status }} px-2 py-1 rounded-full text-sm">
+                            {{ vps.status|title }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SSH Command -->
+            <div class="mt-4 p-4 bg-gray-800 text-green-400 rounded-lg font-mono text-sm">
+                <div class="flex justify-between items-center">
+                    <code>ssh {{ vps.username }}@{{ server_ip }} -p {{ vps.port }}</code>
+                    <button onclick="copySSHCommand()" class="text-white hover:text-gray-300">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resource Summary -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <i class="fas fa-memory text-blue-500 text-xl mb-2"></i>
+                <div class="font-semibold">{{ vps.memory }} GB</div>
+                <div class="text-sm text-gray-600">Memory</div>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg">
+                <i class="fas fa-microchip text-green-500 text-xl mb-2"></i>
+                <div class="font-semibold">{{ vps.cpu }} Cores</div>
+                <div class="text-sm text-gray-600">CPU</div>
+            </div>
+            <div class="bg-purple-50 p-4 rounded-lg">
+                <i class="fas fa-hdd text-purple-500 text-xl mb-2"></i>
+                <div class="font-semibold">{{ vps.disk }} GB</div>
+                <div class="text-sm text-gray-600">Disk</div>
+            </div>
+            <div class="bg-orange-50 p-4 rounded-lg">
+                <i class="fas fa-expand-alt text-orange-500 text-xl mb-2"></i>
+                <div class="font-semibold">{{ vps.os_image }}</div>
+                <div class="text-sm text-gray-600">OS</div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+               class="btn-primary px-6 py-3 rounded-lg flex items-center justify-center space-x-2">
+                <i class="fas fa-cog"></i>
+                <span>Manage VPS</span>
+            </a>
+            
+            <a href="{{ url_for('dashboard') }}" 
+               class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition flex items-center justify-center space-x-2">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            
+            {% if is_admin %}
+            <a href="{{ url_for('create_vps') }}" 
+               class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition flex items-center justify-center space-x-2">
+                <i class="fas fa-plus"></i>
+                <span>Create Another</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Security Notice -->
+        <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex items-start">
+                <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
+                <div>
+                    <h3 class="font-semibold text-yellow-800">Security Notice</h3>
+                    <p class="text-yellow-700 text-sm mt-1">
+                        Please change your password immediately after first login. 
+                        Keep your credentials secure and never share them with anyone.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copySSHCommand() {
+    const command = `ssh {{ vps.username }}@{{ server_ip }} -p {{ vps.port }}`;
+    navigator.clipboard.writeText(command).then(() => {
+        const button = event.target;
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+        }, 2000);
+    });
+}
+
+// Auto-hide password after 30 seconds
+setTimeout(() => {
+    const passwordField = document.getElementById('passwordField');
+    if (passwordField) {
+        passwordField.textContent = '••••••••••••';
+    }
+}, 30000);
+</script>
+{% endblock %}

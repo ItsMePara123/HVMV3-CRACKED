@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+
+{% block title %}File Manager - {{ vps.vps_id }} - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold">File Manager - {{ vps.vps_id }}</h1>
+                <p class="text-gray-600">Manage files and directories on your VPS</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="status-{{ vps.status }} px-3 py-1 rounded-full text-sm">
+                    {{ vps.status|title }}
+                </span>
+                <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+                   class="text-blue-500 hover:text-blue-700 flex items-center space-x-2">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to VPS</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breadcrumb Navigation -->
+    <div class="card p-4">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol class="flex items-center space-x-2">
+                <li>
+                    <a href="{{ url_for('vps_file_manager', vps_id=vps.vps_id, path='/') }}" 
+                       class="text-blue-500 hover:text-blue-700">Root</a>
+                </li>
+                {% set path_parts = path.strip('/').split('/') %}
+                {% for part in path_parts %}
+                    {% if part %}
+                    <li class="flex items-center">
+                        <span class="mx-2 text-gray-400">/</span>
+                        <a href="{{ url_for('vps_file_manager', vps_id=vps.vps_id, path='/' + '/'.join(path_parts[:loop.index])) }}" 
+                           class="text-blue-500 hover:text-blue-700 {% if loop.last %}text-gray-600{% endif %}">
+                            {{ part }}
+                        </a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+            </ol>
+        </nav>
+    </div>
+
+    <!-- File Operations Toolbar -->
+    <div class="card p-4">
+        <div class="flex flex-wrap items-center gap-4">
+            <!-- Upload File -->
+            <div>
+                <input type="file" id="fileUpload" class="hidden" onchange="uploadFile()">
+                <button onclick="document.getElementById('fileUpload').click()" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2">
+                    <i class="fas fa-upload"></i>
+                    <span>Upload File</span>
+                </button>
+            </div>
+
+            <!-- Create Folder -->
+            <button onclick="showCreateFolderModal()" 
+                    class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center space-x-2">
+                <i class="fas fa-folder-plus"></i>
+                <span>New Folder</span>
+            </button>
+
+            <!-- Refresh -->
+            <button onclick="refreshFileList()" 
+                    class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition flex items-center space-x-2">
+                <i class="fas fa-redo"></i>
+                <span>Refresh</span>
+            </button>
+
+            <!-- Current Path Display -->
+            <div class="flex-1 min-w-0">
+                <div class="bg-gray-100 p-2 rounded text-sm font-mono truncate">
+                    {{ path }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File List -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Files and Directories</h2>
+            <div class="text-sm text-gray-500">
+                {{ files|length }} items
+            </div>
+        </div>
+
+        {% if files %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b">
+                        <th class="text-left p-3">Name</th>
+                        <th class="text-left p-3">Size</th>
+                        <th class="text-left p-3">Permissions</th>
+                        <th class="text-left p-3">Owner</th>
+                        <th class="text-left p-3">Modified</th>
+                        <th class="text-left p-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                    {% if not file.startswith('total') %}
+                    {% set file_parts = file.split() %}
+                    {% if file_parts|length >= 9 %}
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3">
+                            <div class="flex items-center space-x-2">
+                                {% if file_parts[0].startswith('d') %}
+                                <i class="fas fa-folder text-yellow-500"></i>
+                                <a href="{{ url_for('vps_file_manager', vps_id=vps.vps_id, path=(path.rstrip('/') ~ '/' ~ file_parts[8:])) }}">
+                                   class="text-blue-500 hover:text-blue-700 font-medium">
+                                    {{ file_parts[8:]|join(' ') }}
+                                </a>
+                                {% else %}
+                                <i class="fas fa-file text-gray-400"></i>
+                                <span class="font-mono">{{ file_parts[8:]|join(' ') }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="p-3 text-sm text-gray-600">
+                            {% if not file_parts[0].startswith('d') %}
+                            {{ file_parts[4] }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="p-3">
+                            <code class="text-xs bg-gray-100 px-2 py-1 rounded">{{ file_parts[0] }}</code>
+                        </td>
+                        <td class="p-3 text-sm text-gray-600">
+                            {{ file_parts[2] }}/{{ file_parts[3] }}
+                        </td>
+                        <td class="p-3 text-sm text-gray-600">
+                            {{ file_parts[5] }} {{ file_parts[6] }} {{ file_parts[7] }}
+                        </td>
+                        <td class="p-3">
+                            <div class="flex space-x-2">
+                                {% if not file_parts[0].startswith('d') %}
+                                <button onclick="downloadFile('{{ file_parts[8:]|join(' ') }}')" 
+                                        class="text-green-500 hover:text-green-700" title="Download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                {% endif %}
+                                <button onclick="renameItem('{{ file_parts[8:]|join(' ') }}')" 
+                                        class="text-blue-500 hover:text-blue-700" title="Rename">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteItem('{{ file_parts[8:]|join(' ') }}')" 
+                                        class="text-red-500 hover:text-red-700" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-semibold text-gray-600">No files found</h3>
+            <p class="text-gray-500 mt-2">This directory is empty</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- File Operations -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Quick File Operations</h3>
+            <div class="space-y-3">
+                <button onclick="showCreateFileModal()" 
+                        class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-file-plus"></i>
+                    <span>Create New File</span>
+                </button>
+                <button onclick="showMassUploadModal()" 
+                        class="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600 transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-file-archive"></i>
+                    <span>Upload Archive</span>
+                </button>
+                <button onclick="showPermissionsModal()" 
+                        class="w-full bg-orange-500 text-white py-2 rounded hover:bg-orange-600 transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-lock"></i>
+                    <span>Bulk Permissions</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Storage Info -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Storage Information</h3>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm text-gray-600">Disk Usage</span>
+                        <span class="text-sm text-gray-600">{{ vps.disk }} GB Total</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-blue-500 h-2 rounded-full" style="width: 25%"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="text-center p-3 bg-gray-50 rounded">
+                        <div class="font-semibold">{{ files|length }}</div>
+                        <div class="text-gray-600">Files</div>
+                    </div>
+                    <div class="text-center p-3 bg-gray-50 rounded">
+                        <div class="font-semibold">{{ (vps.disk * 0.25)|round(1) }} GB</div>
+                        <div class="text-gray-600">Used</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Folder Modal -->
+<div id="createFolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold mb-4">Create New Folder</h3>
+        <form onsubmit="createFolder(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Folder Name</label>
+                <input type="text" id="folderName" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="hideCreateFolderModal()"
+                        class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="btn-primary px-4 py-2 rounded-lg">
+                    Create Folder
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Create File Modal -->
+<div id="createFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold mb-4">Create New File</h3>
+        <form onsubmit="createFile(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">File Name</label>
+                <input type="text" id="fileName" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Content (Optional)</label>
+                <textarea id="fileContent" rows="4" 
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="hideCreateFileModal()"
+                        class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="btn-primary px-4 py-2 rounded-lg">
+                    Create File
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentPath = '{{ path }}';
+
+function showCreateFolderModal() {
+    document.getElementById('createFolderModal').classList.remove('hidden');
+}
+
+function hideCreateFolderModal() {
+    document.getElementById('createFolderModal').classList.add('hidden');
+}
+
+function showCreateFileModal() {
+    document.getElementById('createFileModal').classList.remove('hidden');
+}
+
+function hideCreateFileModal() {
+    document.getElementById('createFileModal').classList.add('hidden');
+}
+
+function createFolder(event) {
+    event.preventDefault();
+    const folderName = document.getElementById('folderName').value;
+    const fullPath = currentPath.endsWith('/') ? currentPath + folderName : currentPath + '/' + folderName;
+    
+    fetch(`/vps/{{ vps.vps_id }}/run_command`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `command=mkdir -p ${encodeURIComponent(fullPath)}`
+    }).then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              hideCreateFolderModal();
+              refreshFileList();
+          } else {
+              alert('Error creating folder: ' + data.error);
+          }
+      });
+}
+
+function createFile(event) {
+    event.preventDefault();
+    const fileName = document.getElementById('fileName').value;
+    const fileContent = document.getElementById('fileContent').value;
+    const fullPath = currentPath.endsWith('/') ? currentPath + fileName : currentPath + '/' + fileName;
+    
+    let command = `touch ${encodeURIComponent(fullPath)}`;
+    if (fileContent) {
+        const escapedContent = fileContent.replace(/'/g, "'\\''");
+        command = `echo '${escapedContent}' > ${encodeURIComponent(fullPath)}`;
+    }
+    
+    fetch(`/vps/{{ vps.vps_id }}/run_command`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `command=${command}`
+    }).then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              hideCreateFileModal();
+              refreshFileList();
+          } else {
+              alert('Error creating file: ' + data.error);
+          }
+      });
+}
+
+function uploadFile() {
+    const fileInput = document.getElementById('fileUpload');
+    const file = fileInput.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', currentPath);
+    
+    fetch(`/vps/{{ vps.vps_id }}/upload`, {
+        method: 'POST',
+        body: formData
+    }).then(response => response.json())
+      .then(data => {
+          if (data.message) {
+              showSuccess('File uploaded successfully!');
+              refreshFileList();
+          } else {
+              alert('Error uploading file: ' + data.error);
+          }
+          fileInput.value = '';
+      });
+}
+
+function downloadFile(filename) {
+    const fullPath = currentPath.endsWith('/') ? currentPath + filename : currentPath + '/' + filename;
+    window.open(`/vps/{{ vps.vps_id }}/download?path=${encodeURIComponent(fullPath)}`, '_blank');
+}
+
+function renameItem(filename) {
+    const newName = prompt('Enter new name:', filename);
+    if (newName && newName !== filename) {
+        const oldPath = currentPath.endsWith('/') ? currentPath + filename : currentPath + '/' + filename;
+        const newPath = currentPath.endsWith('/') ? currentPath + newName : currentPath + '/' + newName;
+        
+        fetch(`/vps/{{ vps.vps_id }}/run_command`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `command=mv ${encodeURIComponent(oldPath)} ${encodeURIComponent(newPath)}`
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  refreshFileList();
+              } else {
+                  alert('Error renaming: ' + data.error);
+              }
+          });
+    }
+}
+
+function deleteItem(filename) {
+    if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+    
+    const fullPath = currentPath.endsWith('/') ? currentPath + filename : currentPath + '/' + filename;
+    
+    fetch(`/vps/{{ vps.vps_id }}/run_command`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `command=rm -rf ${encodeURIComponent(fullPath)}`
+    }).then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              refreshFileList();
+          } else {
+              alert('Error deleting: ' + data.error);
+          }
+      });
+}
+
+function refreshFileList() {
+    window.location.href = `{{ url_for('vps_file_manager', vps_id=vps.vps_id) }}?path=${encodeURIComponent(currentPath)}`;
+}
+
+function showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'createFolderModal') hideCreateFolderModal();
+    if (e.target.id === 'createFileModal') hideCreateFileModal();
+});
+</script>
+{% endblock %}

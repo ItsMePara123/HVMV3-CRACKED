@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Referral Program - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold">Referral Program</h1>
+                <p class="text-gray-600">Invite friends and earn rewards</p>
+            </div>
+            <div class="text-right">
+                <div class="text-3xl font-bold text-blue-600">{{ referred }}</div>
+                <div class="text-gray-600">People Referred</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referral Code -->
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-4">Your Referral Code</h2>
+        <div class="flex items-center space-x-4">
+            <div class="flex-1">
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <code class="text-2xl font-mono font-bold text-gray-800">{{ code }}</code>
+                </div>
+            </div>
+            <button onclick="copyReferralCode()" 
+                    class="btn-primary px-6 py-3 rounded-lg flex items-center space-x-2">
+                <i class="fas fa-copy"></i>
+                <span>Copy Code</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Share Links -->
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-4">Share Your Link</h2>
+        <div class="space-y-4">
+            <div class="flex items-center space-x-4">
+                <div class="flex-1">
+                    <div class="bg-gray-100 p-3 rounded-lg">
+                        <code id="referralLink" class="text-sm break-all">
+                            {{ request.url_root }}register?referral_code={{ code }}
+                        </code>
+                    </div>
+                </div>
+                <button onclick="copyReferralLink()" 
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+                    <i class="fas fa-link"></i>
+                </button>
+            </div>
+
+            <!-- Quick Share Buttons -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="shareEmail()" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2">
+                    <i class="fas fa-envelope"></i>
+                    <span>Email</span>
+                </button>
+                
+                <button onclick="shareTwitter()" 
+                        class="bg-sky-500 text-white px-4 py-2 rounded-lg hover:bg-sky-600 transition flex items-center space-x-2">
+                    <i class="fab fa-twitter"></i>
+                    <span>Twitter</span>
+                </button>
+                
+                <button onclick="shareWhatsApp()" 
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center space-x-2">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="card p-6 text-center">
+            <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-user-plus text-xl"></i>
+            </div>
+            <h3 class="font-semibold mb-2">1. Share Your Code</h3>
+            <p class="text-gray-600 text-sm">Share your unique referral code with friends</p>
+        </div>
+        
+        <div class="card p-6 text-center">
+            <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-user-check text-xl"></i>
+            </div>
+            <h3 class="font-semibold mb-2">2. Friends Sign Up</h3>
+            <p class="text-gray-600 text-sm">They use your code when creating their account</p>
+        </div>
+        
+        <div class="card p-6 text-center">
+            <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-gift text-xl"></i>
+            </div>
+            <h3 class="font-semibold mb-2">3. Earn Rewards</h3>
+            <p class="text-gray-600 text-sm">Get rewards for every successful referral</p>
+        </div>
+    </div>
+
+    <!-- Benefits -->
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-4">Referral Benefits</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-rocket text-blue-500 text-xl"></i>
+                    <div>
+                        <h3 class="font-semibold">For You</h3>
+                        <ul class="text-sm text-gray-600 mt-1 space-y-1">
+                            <li>• Priority support</li>
+                            <li>• Extended VPS limits</li>
+                            <li>• Special badges</li>
+                            <li>• Early access to features</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-green-50 p-4 rounded-lg">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-gift text-green-500 text-xl"></i>
+                    <div>
+                        <h3 class="font-semibold">For Friends</h3>
+                        <ul class="text-sm text-gray-600 mt-1 space-y-1">
+                            <li>• Welcome bonus</li>
+                            <li>• Extended trial period</li>
+                            <li>• Free resources</li>
+                            <li>• Quick start guide</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referral Stats -->
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-4">Your Referral Stats</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+                <div class="text-2xl font-bold text-blue-600">{{ referred }}</div>
+                <div class="text-gray-600 text-sm">Total Referrals</div>
+            </div>
+            
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+                <div class="text-2xl font-bold text-green-600">{{ referred * 7 }}</div>
+                <div class="text-gray-600 text-sm">Potential VPS</div>
+            </div>
+            
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+                <div class="text-2xl font-bold text-purple-600">{{ referred * 30 }}%</div>
+                <div class="text-gray-600 text-sm">Success Rate</div>
+            </div>
+            
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+                <div class="text-2xl font-bold text-orange-600">#{{ referred + 1 }}</div>
+                <div class="text-gray-600 text-sm">Your Rank</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyReferralCode() {
+    navigator.clipboard.writeText('{{ code }}').then(() => {
+        showCopySuccess('Referral code copied!');
+    });
+}
+
+function copyReferralLink() {
+    const link = document.getElementById('referralLink').textContent;
+    navigator.clipboard.writeText(link).then(() => {
+        showCopySuccess('Referral link copied!');
+    });
+}
+
+function shareEmail() {
+    const subject = 'Join me on {{ panel_name }}!';
+    const body = `Hi! I think you'll love {{ panel_name }}. Use my referral code: {{ code }}\n\nSign up here: {{ request.url_root }}register?referral_code={{ code }}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function shareTwitter() {
+    const text = `Join me on {{ panel_name }}! Use my referral code: {{ code }}`;
+    const url = '{{ request.url_root }}register?referral_code={{ code }}';
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+}
+
+function shareWhatsApp() {
+    const text = `Join me on {{ panel_name }}! Use my referral code: {{ code }} - {{ request.url_root }}register?referral_code={{ code }}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+function showCopySuccess(message) {
+    // Create toast notification
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

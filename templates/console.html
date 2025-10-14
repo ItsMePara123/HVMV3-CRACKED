@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Console - {{ vps.vps_id }} - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="h-screen flex flex-col">
+    <!-- Header -->
+    <div class="bg-white border-b p-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+                   class="text-blue-500 hover:text-blue-700">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h1 class="text-xl font-bold">Web Console - {{ vps.vps_id }}</h1>
+                    <p class="text-gray-600 text-sm">SSH access via browser</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="status-{{ vps.status }} px-3 py-1 rounded-full text-sm">
+                    {{ vps.status|title }}
+                </span>
+                <button onclick="toggleFullscreen()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Form -->
+    <div id="connectionForm" class="bg-gray-50 p-6 border-b">
+        <div class="max-w-2xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Host</label>
+                    <input type="text" id="sshHost" value="127.0.0.1" 
+                           class="w-full rounded-md border-gray-300 shadow-sm" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Port</label>
+                    <input type="number" id="sshPort" value="{{ vps.port }}" 
+                           class="w-full rounded-md border-gray-300 shadow-sm" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input type="text" id="sshUsername" value="{{ vps.username }}" 
+                           class="w-full rounded-md border-gray-300 shadow-sm" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="flex space-x-2">
+                        <input type="password" id="sshPassword" value="{{ vps.password }}" 
+                               class="w-full rounded-md border-gray-300 shadow-sm" readonly>
+                        <button onclick="togglePasswordVisibility()" type="button" 
+                                class="bg-gray-200 px-3 rounded-md hover:bg-gray-300">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-center">
+                <button onclick="connectSSH()" id="connectBtn"
+                        class="btn-primary px-6 py-2 rounded-lg flex items-center space-x-2">
+                    <i class="fas fa-plug"></i>
+                    <span>Connect to SSH</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terminal Container -->
+    <div id="terminalContainer" class="flex-1 bg-black hidden">
+        <div id="terminal" class="h-full w-full p-4 font-mono text-green-400 overflow-auto"></div>
+    </div>
+
+    <!-- Disconnected State -->
+    <div id="disconnectedState" class="flex-1 flex items-center justify-center bg-gray-100">
+        <div class="text-center">
+            <i class="fas fa-terminal text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-600">SSH Terminal</h3>
+            <p class="text-gray-500 mt-2">Click the connect button to start your SSH session</p>
+        </div>
+    </div>
+
+    <!-- Connection Status -->
+    <div id="connectionStatus" class="bg-gray-800 text-white p-2 text-center hidden">
+        <div class="flex items-center justify-center space-x-2">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>Connected to {{ vps.vps_id }}</span>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+const socket = io('/console');
+let isConnected = false;
+
+function connectSSH() {
+    const btn = document.getElementById('connectBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<div class="loading-spinner mx-auto"></div>';
+    btn.disabled = true;
+
+    const host = document.getElementById('sshHost').value;
+    const port = document.getElementById('sshPort').value;
+    const username = document.getElementById('sshUsername').value;
+    const password = document.getElementById('sshPassword').value;
+
+    socket.emit('start_shell', {
+        vps_id: '{{ vps.vps_id }}',
+        host: host,
+        port: parseInt(port),
+        username: username,
+        password: password
+    });
+}
+
+function togglePasswordVisibility() {
+    const passwordField = document.getElementById('sshPassword');
+    const icon = event.target.querySelector('i') || event.target;
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        passwordField.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+function toggleFullscreen() {
+    const terminalContainer = document.getElementById('terminalContainer');
+    if (!document.fullscreenElement) {
+        terminalContainer.requestFullscreen().catch(err => {
+            console.log(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+// Socket event handlers
+socket.on('connect', () => {
+    console.log('Connected to WebSocket');
+});
+
+socket.on('output', (data) => {
+    const terminal = document.getElementById('terminal');
+    terminal.innerHTML += data;
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    // Show terminal and hide disconnected state
+    document.getElementById('terminalContainer').classList.remove('hidden');
+    document.getElementById('disconnectedState').classList.add('hidden');
+    document.getElementById('connectionStatus').classList.remove('hidden');
+    document.getElementById('connectionForm').classList.add('hidden');
+    
+    isConnected = true;
+});
+
+socket.on('error', (error) => {
+    alert('Connection error: ' + error);
+    document.getElementById('connectBtn').innerHTML = '<i class="fas fa-plug"></i><span>Connect to SSH</span>';
+    document.getElementById('connectBtn').disabled = false;
+});
+
+socket.on('shell_exit', () => {
+    isConnected = false;
+    document.getElementById('terminalContainer').classList.add('hidden');
+    document.getElementById('disconnectedState').classList.remove('hidden');
+    document.getElementById('connectionStatus').classList.add('hidden');
+    document.getElementById('connectionForm').classList.remove('hidden');
+    document.getElementById('connectBtn').innerHTML = '<i class="fas fa-plug"></i><span>Connect to SSH</span>';
+    document.getElementById('connectBtn').disabled = false;
+});
+
+// Handle terminal input
+document.addEventListener('keydown', (e) => {
+    if (!isConnected) return;
+    
+    if (e.target.id !== 'terminal') {
+        socket.emit('input', e.key);
+    }
+});
+
+// Handle terminal clicks for focus
+document.getElementById('terminal').addEventListener('click', () => {
+    document.getElementById('terminal').focus();
+});
+
+// Handle resize events
+socket.on('resize', (data) => {
+    socket.emit('resize', data);
+});
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    if (isConnected) {
+        const cols = Math.floor(window.innerWidth / 8);
+        const rows = Math.floor(window.innerHeight / 17);
+        socket.emit('resize', { cols, rows });
+    }
+});
+</script>
+
+<style>
+#terminal {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.2;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+#terminal:focus {
+    outline: none;
+}
+
+.loading-spinner {
+    border: 2px solid #f3f4f6;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

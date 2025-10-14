@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Services - {{ vps.vps_id }} - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">Service Manager</h1>
+                <p class="text-gray-600">VPS: {{ vps.vps_id }} - Manage system services</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="status-{{ vps.status }} px-3 py-1 rounded-full text-sm font-medium">
+                    <i class="fas fa-circle mr-1"></i>
+                    {{ vps.status|title }}
+                </span>
+                <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+                   class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center">
+                    <i class="fas fa-arrow-left mr-1"></i>Back to VPS
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Controls -->
+    <div class="card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h3 class="text-lg font-semibold flex items-center">
+                <i class="fas fa-cogs mr-2 text-blue-500"></i>
+                System Services
+            </h3>
+            <div class="flex space-x-3">
+                <button onclick="refreshServices()" 
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center">
+                    <i class="fas fa-sync-alt mr-1"></i>Refresh
+                </button>
+                {% if is_admin %}
+                <button onclick="showServiceControlModal()" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center">
+                    <i class="fas fa-play-circle mr-1"></i>Manage Service
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Table -->
+    <div class="card p-6">
+        <div class="overflow-x-auto">
+            <table class="w-full table-auto">
+                <thead>
+                    <tr class="bg-gray-50 border-b">
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">UNIT</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">LOAD</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">ACTIVE</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">SUB</th>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">DESCRIPTION</th>
+                        {% if is_admin %}
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">ACTIONS</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for service in services %}
+                    {% if not loop.first and service.strip() %}  <!-- Skip header row and empty lines -->
+                    <tr class="hover:bg-gray-50 transition">
+                        {% set parts = service.split() %}
+                        {% if parts|length >= 5 %}
+                        <td class="px-4 py-3 text-sm font-mono">{{ parts[0] }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded text-xs 
+                                {% if parts[1] == 'loaded' %}bg-green-100 text-green-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ parts[1] }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded text-xs 
+                                {% if parts[2] == 'active' %}bg-green-100 text-green-800
+                                {% elif parts[2] == 'inactive' %}bg-gray-100 text-gray-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ parts[2] }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded text-xs 
+                                {% if parts[3] == 'running' %}bg-green-100 text-green-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ parts[3] }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm" title="{{ parts[4:]|join(' ') }}">
+                            {{ parts[4:]|join(' ') }}
+                        </td>
+                        {% if is_admin %}
+                        <td class="px-4 py-3 text-sm">
+                            <div class="flex space-x-2">
+                                {% if parts[2] == 'active' %}
+                                <button onclick="controlService('{{ vps.vps_id }}', '{{ parts[0] }}', 'stop')" 
+                                        class="text-red-500 hover:text-red-700 transition" 
+                                        title="Stop Service">
+                                    <i class="fas fa-stop"></i>
+                                </button>
+                                <button onclick="controlService('{{ vps.vps_id }}', '{{ parts[0] }}', 'restart')" 
+                                        class="text-yellow-500 hover:text-yellow-700 transition" 
+                                        title="Restart Service">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                                {% else %}
+                                <button onclick="controlService('{{ vps.vps_id }}', '{{ parts[0] }}', 'start')" 
+                                        class="text-green-500 hover:text-green-700 transition" 
+                                        title="Start Service">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% endif %}
+                        {% endif %}
+                    </tr>
+                    {% endif %}
+                    {% else %}
+                    <tr>
+                        <td colspan="{% if is_admin %}6{% else %}5{% endif %}" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                            <p>No service data available or VPS is not running</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Service Statistics -->
+        {% if services and services|length > 1 %}
+        {% set active_services = services|selectattr('status', 'equalto', 'active')|list %}
+        {% set loaded_services = services|selectattr('status', 'equalto', 'loaded')|list %}
+        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h4 class="font-semibold mb-3">Service Statistics</h4>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ services|length - 1 }}</div>
+                    <div class="text-gray-600">Total Services</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ active_services|length }}</div>
+                    <div class="text-gray-600">Active</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-yellow-600">{{ loaded_services|length }}</div>
+                    <div class="text-gray-600">Loaded</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-600">{{ (services|length - 1) - active_services|length }}</div>
+                    <div class="text-gray-600">Inactive</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Common Services Quick Actions -->
+    <div class="card p-6">
+        <h3 class="text-lg font-semibold mb-4 flex items-center">
+            <i class="fas fa-bolt mr-2 text-yellow-500"></i>
+            Common Services
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {% set common_services = ['ssh', 'nginx', 'apache2', 'mysql', 'postgresql', 'redis', 'docker', 'cron'] %}
+            {% for service_name in common_services %}
+            <div class="p-4 border rounded-lg text-center hover:bg-gray-50 transition">
+                <div class="text-lg font-semibold mb-2">{{ service_name }}</div>
+                {% if is_admin %}
+                <div class="flex justify-center space-x-2">
+                    <button onclick="controlService('{{ vps.vps_id }}', '{{ service_name }}', 'start')" 
+                            class="text-green-500 hover:text-green-700" title="Start">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button onclick="controlService('{{ vps.vps_id }}', '{{ service_name }}', 'stop')" 
+                            class="text-red-500 hover:text-red-700" title="Stop">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <button onclick="controlService('{{ vps.vps_id }}', '{{ service_name }}', 'restart')" 
+                            class="text-yellow-500 hover:text-yellow-700" title="Restart">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Service Control Modal -->
+<div id="serviceControlModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Manage Service</h3>
+        <form id="serviceControlForm" onsubmit="controlCustomService(event, '{{ vps.vps_id }}')">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Service Name</label>
+                    <input type="text" name="service" class="w-full border rounded p-2" required 
+                           placeholder="e.g., nginx, ssh, mysql">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Action</label>
+                    <select name="action" class="w-full border rounded p-2">
+                        <option value="start">Start</option>
+                        <option value="stop">Stop</option>
+                        <option value="restart">Restart</option>
+                        <option value="status">Status</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="hideServiceControlModal()" 
+                        class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    Execute
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Modal functions
+function showServiceControlModal() {
+    document.getElementById('serviceControlModal').classList.remove('hidden');
+}
+
+function hideServiceControlModal() {
+    document.getElementById('serviceControlModal').classList.add('hidden');
+}
+
+// Service management functions
+async function controlService(vpsId, service, action) {
+    if (!confirm(`Are you sure you want to ${action} ${service}?`)) return;
+    
+    try {
+        const formData = new FormData();
+        formData.append('service', service);
+        formData.append('action', action);
+        
+        const response = await fetch(`/vps/${vpsId}/services`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(`Service ${service} ${action}ed successfully`);
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || `Failed to ${action} service`));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function controlCustomService(event, vpsId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const service = formData.get('service');
+    const action = formData.get('action');
+    
+    if (!confirm(`Are you sure you want to ${action} ${service}?`)) return;
+    
+    try {
+        const response = await fetch(`/vps/${vpsId}/services`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(`Service ${service} ${action}ed successfully`);
+            hideServiceControlModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || `Failed to ${action} service`));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function refreshServices() {
+    location.reload();
+}
+
+// Auto-refresh every 30 seconds
+setTimeout(() => {
+    if (document.visibilityState === 'visible') {
+        refreshServices();
+    }
+}, 30000);
+</script>
+
+<style>
+.modal {
+    transition: opacity 0.3s ease;
+}
+.status-running {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.status-stopped {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+.card {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+</style>
+{% endblock %}

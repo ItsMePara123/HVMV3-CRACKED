@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Welcome Section -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold">Welcome back, {{ current_user.username }}!</h1>
+                <p class="text-gray-600 mt-1">{{ welcome_message }}</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="toggleTheme()" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                    <i id="themeIcon" class="fas {{ 'fa-sun' if theme == 'dark' else 'fa-moon' }}"></i>
+                </button>
+                <div class="text-right">
+                    <div class="font-semibold">{{ current_user.username }}</div>
+                    <div class="text-sm text-gray-500">{{ current_user.role|title }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="stat-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+                    <i class="fas fa-server text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Active VPS</p>
+                    <p class="text-2xl font-bold">{{ vps_list|length }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                    <i class="fas fa-memory text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Total Memory</p>
+                    <p class="text-2xl font-bold">{{ vps_list|sum(attribute='memory') }} GB</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
+                    <i class="fas fa-microchip text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Total CPU</p>
+                    <p class="text-2xl font-bold">{{ vps_list|sum(attribute='cpu') }} Cores</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-orange-100 text-orange-600 mr-4">
+                    <i class="fas fa-hdd text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Total Storage</p>
+                    <p class="text-2xl font-bold">{{ vps_list|sum(attribute='disk') }} GB</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications -->
+    {% if notifications %}
+    <div class="card p-6">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+            <i class="fas fa-bell mr-2 text-yellow-500"></i>
+            Notifications
+        </h2>
+        <div class="space-y-3">
+            {% for notification in notifications %}
+            <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                <div class="flex items-center">
+                    <i class="fas fa-info-circle text-yellow-500 mr-3"></i>
+                    <span>{{ notification.message }}</span>
+                </div>
+                <span class="text-sm text-gray-500">{{ notification.created_at }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- VPS List -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">Your VPS Instances</h2>
+            {% if is_admin %}
+            <a href="{{ url_for('create_vps') }}" class="btn-primary px-4 py-2 rounded-lg flex items-center space-x-2">
+                <i class="fas fa-plus"></i>
+                <span>Create VPS</span>
+            </a>
+            {% endif %}
+        </div>
+
+        {% if vps_list %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for vps in vps_list %}
+            <div class="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-lg">{{ vps.vps_id }}</h3>
+                    <span class="status-{{ vps.status }} text-sm font-medium">
+                        <i class="fas fa-circle mr-1"></i>
+                        {{ vps.status|title }}
+                    </span>
+                </div>
+                
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Memory:</span>
+                        <span>{{ vps.memory }} GB</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">CPU:</span>
+                        <span>{{ vps.cpu }} Cores</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Disk:</span>
+                        <span>{{ vps.disk }} GB</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">OS:</span>
+                        <span>{{ vps.os_image }}</span>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex space-x-2">
+                    <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+                       class="flex-1 text-center bg-blue-500 text-white py-2 px-3 rounded text-sm hover:bg-blue-600 transition">
+                        <i class="fas fa-eye mr-1"></i>View
+                    </a>
+                    {% if vps.status == 'running' %}
+                    <button onclick="stopVPS('{{ vps.vps_id }}')" 
+                            class="flex-1 text-center bg-red-500 text-white py-2 px-3 rounded text-sm hover:bg-red-600 transition">
+                        <i class="fas fa-stop mr-1"></i>Stop
+                    </button>
+                    {% else %}
+                    <button onclick="startVPS('{{ vps.vps_id }}')" 
+                            class="flex-1 text-center bg-green-500 text-white py-2 px-3 rounded text-sm hover:bg-green-600 transition">
+                        <i class="fas fa-play mr-1"></i>Start
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <i class="fas fa-server text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-semibold text-gray-600">No VPS instances found</h3>
+            <p class="text-gray-500 mt-2">Get started by creating your first VPS instance</p>
+            {% if is_admin %}
+            <a href="{{ url_for('create_vps') }}" class="btn-primary inline-block mt-4 px-6 py-2 rounded-lg">
+                Create VPS
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+async function startVPS(vpsId) {
+    const response = await fetch(`/vps/${vpsId}/start`);
+    const data = await response.json();
+    if (response.ok) {
+        location.reload();
+    } else {
+        alert('Error: ' + data.error);
+    }
+}
+
+async function stopVPS(vpsId) {
+    const response = await fetch(`/vps/${vpsId}/stop`);
+    const data = await response.json();
+    if (response.ok) {
+        location.reload();
+    } else {
+        alert('Error: ' + data.error);
+    }
+}
+</script>
+{% endblock %}

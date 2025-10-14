@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}Firewall - {{ vps.vps_id }} - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold">Firewall Management - {{ vps.vps_id }}</h1>
+                <p class="text-gray-600">Configure UFW firewall rules for your VPS</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="status-{{ vps.status }} px-3 py-1 rounded-full text-sm">
+                    {{ vps.status|title }}
+                </span>
+                <a href="{{ url_for('vps_details', vps_id=vps.vps_id) }}" 
+                   class="text-blue-500 hover:text-blue-700 flex items-center space-x-2">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to VPS</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firewall Status -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Firewall Status Card -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Firewall Status</h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-600">Status:</span>
+                    {% if 'Status: active' in status %}
+                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">Active</span>
+                    {% else %}
+                    <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-sm">Inactive</span>
+                    {% endif %}
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-600">Default Policy:</span>
+                    <span class="font-mono text-sm">
+                        {% if 'Default: deny (incoming)' in status %}Deny Incoming{% endif %}
+                        {% if 'Default: allow (incoming)' in status %}Allow Incoming{% endif %}
+                    </span>
+                </div>
+                
+                <div class="flex space-x-2">
+                    {% if 'Status: active' in status %}
+                    <button onclick="executeFirewallCommand('ufw disable')" 
+                            class="flex-1 bg-red-500 text-white py-2 rounded hover:bg-red-600 transition">
+                        Disable Firewall
+                    </button>
+                    {% else %}
+                    <button onclick="executeFirewallCommand('ufw enable')" 
+                            class="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 transition">
+                        Enable Firewall
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
+            <div class="space-y-2">
+                <button onclick="executeFirewallCommand('ufw default deny incoming')" 
+                        class="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600 transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-ban"></i>
+                    <span>Deny All Incoming</span>
+                </button>
+                <button onclick="executeFirewallCommand('ufw default allow incoming')" 
+                        class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-check"></i>
+                    <span>Allow All Incoming</span>
+                </button>
+                <button onclick="executeFirewallCommand('ufw reset')" 
+                        class="w-full bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600 transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-undo"></i>
+                    <span>Reset Firewall</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Common Ports -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Common Ports</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="addPortRule(22, 'allow')" 
+                        class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition text-sm">
+                    Allow SSH (22)
+                </button>
+                <button onclick="addPortRule(80, 'allow')" 
+                        class="bg-green-500 text-white p-2 rounded hover:bg-green-600 transition text-sm">
+                    Allow HTTP (80)
+                </button>
+                <button onclick="addPortRule(443, 'allow')" 
+                        class="bg-purple-500 text-white p-2 rounded hover:bg-purple-600 transition text-sm">
+                    Allow HTTPS (443)
+                </button>
+                <button onclick="addPortRule(3306, 'deny')" 
+                        class="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition text-sm">
+                    Deny MySQL (3306)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Command -->
+    <div class="card p-6">
+        <h3 class="text-lg font-semibold mb-4">Custom Firewall Command</h3>
+        <form onsubmit="executeCustomCommand(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">UFW Command</label>
+                <input type="text" id="fwCommand" placeholder="e.g., ufw allow 8080/tcp" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono">
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" 
+                        class="btn-primary px-6 py-2 rounded-lg flex items-center space-x-2">
+                    <i class="fas fa-terminal"></i>
+                    <span>Execute Command</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Current Rules -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">Current Firewall Rules</h3>
+            <button onclick="refreshFirewallStatus()" 
+                    class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition flex items-center space-x-2">
+                <i class="fas fa-redo"></i>
+                <span>Refresh</span>
+            </button>
+        </div>
+
+        <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-auto max-h-96">
+            <pre>{{ status }}</pre>
+        </div>
+    </div>
+
+    <!-- Rule Management -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Add Rule Form -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Add New Rule</h3>
+            <form onsubmit="addCustomRule(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Action</label>
+                        <select id="ruleAction" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="allow">Allow</option>
+                            <option value="deny">Deny</option>
+                            <option value="reject">Reject</option>
+                            <option value="limit">Limit</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Direction</label>
+                        <select id="ruleDirection" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="in">Incoming</option>
+                            <option value="out">Outgoing</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Port/Service</label>
+                        <input type="text" id="rulePort" placeholder="80 or 80/tcp or http" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">IP Address (Optional)</label>
+                        <input type="text" id="ruleIP" placeholder="192.168.1.1" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="btn-primary px-6 py-2 rounded-lg flex items-center space-x-2">
+                        <i class="fas fa-plus"></i>
+                        <span>Add Rule</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Rule Examples -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Common Rule Examples</h3>
+            <div class="space-y-3">
+                <div class="p-3 bg-gray-50 rounded">
+                    <code class="text-sm block mb-1">ufw allow 22/tcp</code>
+                    <span class="text-xs text-gray-600">Allow SSH connections</span>
+                </div>
+                <div class="p-3 bg-gray-50 rounded">
+                    <code class="text-sm block mb-1">ufw allow from 192.168.1.0/24</code>
+                    <span class="text-xs text-gray-600">Allow from specific subnet</span>
+                </div>
+                <div class="p-3 bg-gray-50 rounded">
+                    <code class="text-sm block mb-1">ufw deny 3306/tcp</code>
+                    <span class="text-xs text-gray-600">Block MySQL port</span>
+                </div>
+                <div class="p-3 bg-gray-50 rounded">
+                    <code class="text-sm block mb-1">ufw limit 22/tcp</code>
+                    <span class="text-xs text-gray-600">Limit SSH connection attempts</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firewall Statistics -->
+    <div class="card p-6">
+        <h3 class="text-lg font-semibold mb-4">Firewall Statistics</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center p-4 bg-blue-50 rounded-lg">
+                <div class="text-2xl font-bold text-blue-600" id="allowCount">-</div>
+                <div class="text-gray-600 text-sm">Allow Rules</div>
+            </div>
+            <div class="text-center p-4 bg-red-50 rounded-lg">
+                <div class="text-2xl font-bold text-red-600" id="denyCount">-</div>
+                <div class="text-gray-600 text-sm">Deny Rules</div>
+            </div>
+            <div class="text-center p-4 bg-green-50 rounded-lg">
+                <div class="text-2xl font-bold text-green-600" id="limitCount">-</div>
+                <div class="text-gray-600 text-sm">Limit Rules</div>
+            </div>
+            <div class="text-center p-4 bg-purple-50 rounded-lg">
+                <div class="text-2xl font-bold text-purple-600" id="totalCount">-</div>
+                <div class="text-gray-600 text-sm">Total Rules</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold mb-4" id="confirmTitle">Confirm Action</h3>
+        <p class="text-gray-600 mb-4" id="confirmMessage">Are you sure you want to perform this action?</p>
+        <div class="flex justify-end space-x-3">
+            <button onclick="hideConfirmModal()"
+                    class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                Cancel
+            </button>
+            <button id="confirmAction" 
+                    class="btn-primary px-4 py-2 rounded-lg">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let pendingCommand = '';
+
+function executeFirewallCommand(command) {
+    if (command.includes('reset') || command.includes('disable')) {
+        showConfirmModal(
+            'Confirm Firewall Action',
+            `Are you sure you want to execute: <code class="bg-gray-100 p-1 rounded">${command}</code>?`,
+            () => executeCommand(command)
+        );
+    } else {
+        executeCommand(command);
+    }
+}
+
+function executeCustomCommand(event) {
+    event.preventDefault();
+    const command = document.getElementById('fwCommand').value;
+    if (command) {
+        executeCommand(command);
+        document.getElementById('fwCommand').value = '';
+    }
+}
+
+function executeCommand(command) {
+    const formData = new FormData();
+    formData.append('fw_command', command);
+    
+    fetch(`{{ url_for('vps_firewall', vps_id=vps.vps_id) }}`, {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        if (response.ok) {
+            showSuccess('Command executed successfully!');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            response.text().then(text => {
+                alert('Error executing command');
+            });
+        }
+    });
+}
+
+function addPortRule(port, action) {
+    const command = `ufw ${action} ${port}/tcp`;
+    executeCommand(command);
+}
+
+function addCustomRule(event) {
+    event.preventDefault();
+    const action = document.getElementById('ruleAction').value;
+    const direction = document.getElementById('ruleDirection').value;
+    const port = document.getElementById('rulePort').value;
+    const ip = document.getElementById('ruleIP').value;
+    
+    if (!port) {
+        alert('Please enter a port or service');
+        return;
+    }
+    
+    let command = `ufw ${action} ${direction}`;
+    if (ip) {
+        command += ` from ${ip}`;
+    }
+    command += ` to any port ${port}`;
+    
+    executeCommand(command);
+}
+
+function refreshFirewallStatus() {
+    window.location.reload();
+}
+
+function showConfirmModal(title, message, callback) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').innerHTML = message;
+    document.getElementById('confirmAction').onclick = callback;
+    document.getElementById('confirmModal').classList.remove('hidden');
+}
+
+function hideConfirmModal() {
+    document.getElementById('confirmModal').classList.add('hidden');
+}
+
+function showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Parse and display rule counts
+document.addEventListener('DOMContentLoaded', function() {
+    const statusText = `{{ status }}`;
+    const allowCount = (statusText.match(/ALLOW/g) || []).length;
+    const denyCount = (statusText.match(/DENY/g) || []).length;
+    const limitCount = (statusText.match(/LIMIT/g) || []).length;
+    const totalCount = allowCount + denyCount + limitCount;
+    
+    document.getElementById('allowCount').textContent = allowCount;
+    document.getElementById('denyCount').textContent = denyCount;
+    document.getElementById('limitCount').textContent = limitCount;
+    document.getElementById('totalCount').textContent = totalCount;
+});
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'confirmModal') hideConfirmModal();
+});
+</script>
+
+<style>
+/* Custom styles for firewall page */
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+code {
+    font-family: 'Courier New', monospace;
+}
+
+.bg-gray-900 pre {
+    color: #10b981;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,660 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vps.vps_id }} - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header with Status and Actions -->
+    <div class="card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">{{ vps.vps_id }}</h1>
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                    <span class="status-{{ vps.status }} px-3 py-1 rounded-full text-sm font-medium">
+                        <i class="fas fa-circle mr-1"></i>
+                        {{ vps.status|title }}
+                    </span>
+                    <span class="bg-gray-100 px-2 py-1 rounded text-sm">
+                        <i class="fas fa-microchip mr-1"></i>{{ vps.cpu }} CPU
+                    </span>
+                    <span class="bg-gray-100 px-2 py-1 rounded text-sm">
+                        <i class="fas fa-memory mr-1"></i>{{ vps.memory }}GB RAM
+                    </span>
+                    <span class="bg-gray-100 px-2 py-1 rounded text-sm">
+                        <i class="fas fa-hdd mr-1"></i>{{ vps.disk }}GB Disk
+                    </span>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% if vps.status == 'running' %}
+                <button onclick="stopVPS('{{ vps.vps_id }}')" 
+                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center">
+                    <i class="fas fa-stop mr-1"></i>Stop
+                </button>
+                <button onclick="restartVPS('{{ vps.vps_id }}')" 
+                        class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition flex items-center">
+                    <i class="fas fa-redo mr-1"></i>Restart
+                </button>
+                {% else %}
+                <button onclick="startVPS('{{ vps.vps_id }}')" 
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center">
+                    <i class="fas fa-play mr-1"></i>Start
+                </button>
+                {% endif %}
+                
+                {% if is_admin %}
+                <button onclick="showUpgradeModal()" 
+                        class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition flex items-center">
+                    <i class="fas fa-arrow-up mr-1"></i>Upgrade
+                </button>
+                <button onclick="showCloneModal()" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center">
+                    <i class="fas fa-copy mr-1"></i>Clone
+                </button>
+                {% endif %}
+                
+                <button onclick="showDeleteModal()" 
+                        class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center">
+                    <i class="fas fa-trash mr-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="stat-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Memory</p>
+                    <p class="text-2xl font-bold">{{ vps.memory }} GB</p>
+                </div>
+                <i class="fas fa-memory text-3xl text-blue-500"></i>
+            </div>
+        </div>
+        
+        <div class="stat-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">CPU Cores</p>
+                    <p class="text-2xl font-bold">{{ vps.cpu }}</p>
+                </div>
+                <i class="fas fa-microchip text-3xl text-green-500"></i>
+            </div>
+        </div>
+        
+        <div class="stat-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Disk Space</p>
+                    <p class="text-2xl font-bold">{{ vps.disk }} GB</p>
+                </div>
+                <i class="fas fa-hdd text-3xl text-purple-500"></i>
+            </div>
+        </div>
+        
+        <div class="stat-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Bandwidth Limit</p>
+                    <p class="text-2xl font-bold">{{ vps.bandwidth_limit }} GB</p>
+                </div>
+                <i class="fas fa-network-wired text-3xl text-orange-500"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <!-- Left Column -->
+        <div class="xl:col-span-2 space-y-6">
+            <!-- Connection Information -->
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-plug mr-2 text-blue-500"></i>
+                    Connection Information
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                        <span class="font-medium">VPS OS:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded">{{ vps.os_image }}</code>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                        <span class="font-medium">SSH Host:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded">{{ server_ip }}</code>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                        <span class="font-medium">SSH Port:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded">{{ vps.port }}</code>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                        <span class="font-medium">Username:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded">{{ vps.username }}</code>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                        <span class="font-medium">SSH Command:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded text-xs">ssh root@{{ server_ip }} -p {{ vps.port }}</code>
+                    </div>
+                    {% if vps.tmate_session %}
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                        <span class="font-medium">Tmate Session:</span>
+                        <code class="bg-gray-100 px-2 py-1 rounded text-xs">{{ vps.tmate_session }}</code>
+                    </div>
+                    {% endif %}
+                    <div class="p-3 bg-gray-50 rounded">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-medium">Password:</span>
+                            <button onclick="togglePassword()" class="text-blue-500 text-sm flex items-center">
+                                <i class="fas fa-eye mr-1"></i>Show
+                            </button>
+                        </div>
+                        <code id="passwordField" class="bg-gray-100 px-2 py-1 rounded hidden w-full block text-center">{{ vps.password }}</code>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button onclick="changePassword('{{ vps.vps_id }}')" 
+                            class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition flex items-center justify-center">
+                        <i class="fas fa-key mr-1"></i>Change Password
+                    </button>
+                    <a href="{{ url_for('vps_console', vps_id=vps.vps_id) }}" 
+                       class="flex-1 bg-green-500 text-white py-2 rounded text-center hover:bg-green-600 transition flex items-center justify-center">
+                        <i class="fas fa-terminal mr-1"></i>Web Console
+                    </a>
+                </div>
+            </div>
+
+            <!-- Resource History Graph -->
+            {% if history %}
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4">Resource Usage History</h3>
+                <div class="h-64">
+                    <canvas id="resourceChart"></canvas>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+            <!-- Quick Actions -->
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-bolt mr-2 text-yellow-500"></i>
+                    Quick Actions
+                </h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="{{ url_for('vps_stats', vps_id=vps.vps_id) }}" 
+                       class="p-4 bg-blue-50 rounded-lg text-center hover:bg-blue-100 transition">
+                        <i class="fas fa-chart-bar text-blue-500 text-xl mb-2"></i>
+                        <div class="font-medium">Statistics</div>
+                    </a>
+                    
+                    <a href="{{ url_for('vps_file_manager', vps_id=vps.vps_id) }}" 
+                       class="p-4 bg-green-50 rounded-lg text-center hover:bg-green-100 transition">
+                        <i class="fas fa-folder text-green-500 text-xl mb-2"></i>
+                        <div class="font-medium">File Manager</div>
+                    </a>
+                    
+                    <a href="{{ url_for('vps_logs', vps_id=vps.vps_id) }}" 
+                       class="p-4 bg-purple-50 rounded-lg text-center hover:bg-purple-100 transition">
+                        <i class="fas fa-scroll text-purple-500 text-xl mb-2"></i>
+                        <div class="font-medium">View Logs</div>
+                    </a>
+                    
+                    <a href="{{ url_for('vps_firewall', vps_id=vps.vps_id) }}" 
+                       class="p-4 bg-red-50 rounded-lg text-center hover:bg-red-100 transition">
+                        <i class="fas fa-shield-alt text-red-500 text-xl mb-2"></i>
+                        <div class="font-medium">Firewall</div>
+                    </a>
+                    
+                    <a href="{{ url_for('vps_processes', vps_id=vps.vps_id) }}" 
+                       class="p-4 bg-indigo-50 rounded-lg text-center hover:bg-indigo-100 transition">
+                        <i class="fas fa-tasks text-indigo-500 text-xl mb-2"></i>
+                        <div class="font-medium">Processes</div>
+                    </a>
+                    
+                    <a href="{{ url_for('vps_services', vps_id=vps.vps_id) }}" 
+                       class="p-4 bg-orange-50 rounded-lg text-center hover:bg-orange-100 transition">
+                        <i class="fas fa-cogs text-orange-500 text-xl mb-2"></i>
+                        <div class="font-medium">Services</div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Additional Ports -->
+            {% if vps.additional_ports %}
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-ethernet mr-2 text-blue-500"></i>
+                    Additional Ports
+                </h3>
+                <div class="space-y-2">
+                    {% for port in vps.additional_ports.split(',') %}
+                        {% if port %}
+                            {% set host_port, container_port = port.split(':') %}
+                            <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                <span>Host:{{ host_port }} → Container:{{ container_port }}</span>
+                                {% if is_admin %}
+                                <button onclick="removePort('{{ vps.vps_id }}', '{{ host_port }}')" 
+                                        class="text-red-500 hover:text-red-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% if is_admin %}
+                <div class="mt-4">
+                    <button onclick="showAddPortModal()" 
+                            class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition">
+                        <i class="fas fa-plus mr-1"></i>Add Port
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- VPS Information -->
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+                    VPS Information
+                </h3>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Created:</span>
+                        <span>{{ vps.created_at }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Expires:</span>
+                        <span>{{ vps.expires_at }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Restart Count:</span>
+                        <span>{{ vps.restart_count }}</span>
+                    </div>
+                    {% if vps.last_restart %}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Last Restart:</span>
+                        <span>{{ vps.last_restart }}</span>
+                    </div>
+                    {% endif %}
+                    {% if vps.tags %}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Tags:</span>
+                        <span>{{ vps.tags }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Delete VPS</h3>
+        <p class="mb-6">Are you sure you want to delete this VPS? This action cannot be undone.</p>
+        <div class="flex justify-end space-x-3">
+            <button onclick="hideDeleteModal()" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+            <button onclick="deleteVPS('{{ vps.vps_id }}')" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Port Modal -->
+<div id="addPortModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Add Port Mapping</h3>
+        <form id="addPortForm" onsubmit="addPort(event, '{{ vps.vps_id }}')">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Host Port</label>
+                    <input type="number" name="host_port" class="w-full border rounded p-2" min="10000" max="65535" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Container Port</label>
+                    <input type="number" name="cont_port" class="w-full border rounded p-2" value="80" min="1" max="65535" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Protocol</label>
+                    <select name="protocol" class="w-full border rounded p-2">
+                        <option value="tcp">TCP</option>
+                        <option value="udp">UDP</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="hideAddPortModal()" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Add Port</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Upgrade Modal -->
+<div id="upgradeModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Upgrade VPS</h3>
+        <form id="upgradeForm" onsubmit="upgradeVPS(event, '{{ vps.vps_id }}')">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Memory (GB)</label>
+                    <input type="number" name="memory" class="w-full border rounded p-2" value="{{ vps.memory }}" min="1" max="512" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">CPU Cores</label>
+                    <input type="number" name="cpu" class="w-full border rounded p-2" value="{{ vps.cpu }}" min="1" max="32" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Disk Space (GB)</label>
+                    <input type="number" name="disk" class="w-full border rounded p-2" value="{{ vps.disk }}" min="10" max="1000" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Bandwidth Limit (GB)</label>
+                    <input type="number" name="bandwidth_limit" class="w-full border rounded p-2" value="{{ vps.bandwidth_limit }}" min="1" required>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="hideUpgradeModal()" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Upgrade</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Utility functions
+function showModal(id) {
+    document.getElementById(id).classList.remove('hidden');
+}
+
+function hideModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+function showDeleteModal() { showModal('deleteModal'); }
+function hideDeleteModal() { hideModal('deleteModal'); }
+function showAddPortModal() { showModal('addPortModal'); }
+function hideAddPortModal() { hideModal('addPortModal'); }
+function showUpgradeModal() { showModal('upgradeModal'); }
+function hideUpgradeModal() { hideModal('upgradeModal'); }
+function showCloneModal() {
+    if (confirm('Clone this VPS? This will create an exact copy.')) {
+        cloneVPS('{{ vps.vps_id }}');
+    }
+}
+
+// Password toggle
+function togglePassword() {
+    const field = document.getElementById('passwordField');
+    const button = event.target;
+    if (field.classList.contains('hidden')) {
+        field.classList.remove('hidden');
+        button.innerHTML = '<i class="fas fa-eye-slash mr-1"></i>Hide';
+    } else {
+        field.classList.add('hidden');
+        button.innerHTML = '<i class="fas fa-eye mr-1"></i>Show';
+    }
+}
+
+// VPS Management Functions
+async function changePassword(vpsId) {
+    if (!confirm('Are you sure you want to change the VPS password?')) return;
+    
+    try {
+        const response = await fetch(`/vps/${vpsId}/change_password`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Password changed successfully: ' + data.password);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function startVPS(vpsId) {
+    try {
+        const response = await fetch(`/vps/${vpsId}/start`);
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function stopVPS(vpsId) {
+    try {
+        const response = await fetch(`/vps/${vpsId}/stop`);
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function restartVPS(vpsId) {
+    try {
+        const response = await fetch(`/vps/${vpsId}/restart`);
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function deleteVPS(vpsId) {
+    try {
+        const response = await fetch(`/vps/${vpsId}/delete`, { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            window.location.href = '/dashboard';
+        } else {
+            const data = await response.json();
+            alert('Error: ' + data.error);
+            hideDeleteModal();
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+        hideDeleteModal();
+    }
+}
+
+async function addPort(event, vpsId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    try {
+        const response = await fetch(`/vps/${vpsId}/add_port`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function removePort(vpsId, hostPort) {
+    if (!confirm('Remove this port mapping?')) return;
+    
+    const formData = new FormData();
+    formData.append('host_port', hostPort);
+    
+    try {
+        const response = await fetch(`/vps/${vpsId}/remove_port`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function upgradeVPS(event, vpsId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    try {
+        const response = await fetch(`/vps/${vpsId}/upgrade`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            alert('VPS upgraded successfully');
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function cloneVPS(vpsId) {
+    try {
+        const response = await fetch(`/vps/${vpsId}/clone`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            window.location.href = response.url;
+        } else {
+            const data = await response.json();
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Chart.js for resource history
+{% if history %}
+const ctx = document.getElementById('resourceChart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ history|map(attribute='timestamp')|list|tojson }},
+        datasets: [
+            {
+                label: 'CPU %',
+                data: {{ history|map(attribute='cpu_percent')|list|tojson }},
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true
+            },
+            {
+                label: 'Memory %',
+                data: {{ history|map(attribute='memory_percent')|list|tojson }},
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                fill: true
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                    display: true,
+                    text: 'Usage %'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Time'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+
+<style>
+.modal {
+    transition: opacity 0.3s ease;
+}
+.status-running {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.status-stopped {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+.status-not_found {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+.stat-card {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+.card {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+</style>
+{% endblock %}

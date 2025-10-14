@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Create VPS - {{ panel_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="card p-6">
+        <h1 class="text-2xl font-bold mb-6">Create New VPS</h1>
+        
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <!-- VPS Configuration -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Resource inputs -->
+                <div class="space-y-4">
+                    <label class="block">
+                        <span class="text-gray-700">Memory (GB)</span>
+                        <input type="number" name="memory" min="1" max="512" required 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </label>
+                    
+                    <label class="block">
+                        <span class="text-gray-700">CPU Cores</span>
+                        <input type="number" name="cpu" min="1" max="32" required 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </label>
+                    
+                    <label class="block">
+                        <span class="text-gray-700">Disk Space (GB)</span>
+                        <input type="number" name="disk" min="10" max="1000" required 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </label>
+                </div>
+                
+                <!-- OS and User selection -->
+                <div class="space-y-4">
+                    <label class="block">
+                        <span class="text-gray-700">OS Image</span>
+                        <select name="os_image" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            {% for image in os_images %}
+                            <option value="{{ image }}">{{ image }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    
+                    <label class="block">
+                        <span class="text-gray-700">Assign to User</span>
+                        <select name="user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    
+                    <label class="block">
+                        <span class="text-gray-700">Bandwidth Limit (GB)</span>
+                        <input type="number" name="bandwidth_limit" value="0" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </label>
+                </div>
+                
+                <!-- Expiration and Tags -->
+                <div class="space-y-4">
+                    <label class="block">
+                        <span class="text-gray-700">Expiration</span>
+                        <div class="grid grid-cols-3 gap-2 mt-1">
+                            <input type="number" name="expires_days" placeholder="Days" value="30" 
+                                   class="rounded-md border-gray-300 shadow-sm">
+                            <input type="number" name="expires_hours" placeholder="Hours" value="0" 
+                                   class="rounded-md border-gray-300 shadow-sm">
+                            <input type="number" name="expires_minutes" placeholder="Minutes" value="0" 
+                                   class="rounded-md border-gray-300 shadow-sm">
+                        </div>
+                    </label>
+                    
+                    <label class="block">
+                        <span class="text-gray-700">Additional Ports</span>
+                        <input type="text" name="additional_ports" placeholder="8080:80,8443:443" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </label>
+                    
+                    <label class="block">
+                        <span class="text-gray-700">Tags</span>
+                        <input type="text" name="tags" placeholder="web,db,prod" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Custom Dockerfile -->
+            <div>
+                <label class="block">
+                    <span class="text-gray-700">Custom Dockerfile (Optional)</span>
+                    <input type="file" name="custom_dockerfile" 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </label>
+            </div>
+            
+            <!-- Submit Button -->
+            <div class="flex justify-end">
+                <button type="submit" 
+                        class="btn-primary px-6 py-3 rounded-lg text-lg font-semibold">
+                    <i class="fas fa-plus-circle mr-2"></i>
+                    Create VPS
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
