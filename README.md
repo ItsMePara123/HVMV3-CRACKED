@@ -10,5 +10,6 @@ clear
 python3 -c "import secrets; print(secrets.token_hex(32))"
 echo This Is The License Key Of Hvm V3 ❤️
 echo Cracked By Para 😊
+```
 
 nano .env
