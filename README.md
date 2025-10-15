@@ -39,3 +39,5 @@ SMTP_PORT=587
 SMTP_USER=user@example.com
 SMTP_PASS=your-smtp-password
 NOTIFICATION_EMAIL=admin@example.com
+
+python3 hvm.py
