@@ -12,7 +12,8 @@ echo This Is The License Key Of Hvm V3 ❤️
 echo Cracked By Para 😊
 ```
 
-```nano .env
+```
+nano .env
 #Panel Configuration
 SECRET_KEY=your-secret-key-here
 ADMIN_USERNAME=admin
